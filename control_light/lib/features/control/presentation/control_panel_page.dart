@@ -23,7 +23,10 @@ class ControlPanelPage extends StatelessWidget {
       0,
       (sum, block) => sum + block.lights.where((l) => l).length,
     );
-    final totalLights = lights.blocks.length * 4;
+    final totalLights = lights.blocks.fold<int>(
+      0,
+      (sum, block) => sum + block.lights.length,
+    );
 
     return Container(
       decoration: BoxDecoration(
@@ -390,7 +393,7 @@ class BlockCard extends StatelessWidget {
                         ),
                   ),
                   Text(
-                    '$activeCount / 4 lights on',
+                    '$activeCount / ${block.lights.length} lights on',
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(

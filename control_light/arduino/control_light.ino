@@ -1,45 +1,31 @@
 /*
   Lumen Control - Arduino side
-  Works with HC-05/HC-06/HM-10 style UART modules. Expects payloads like:
-    block-1-0-1   (block id, light index 0..3, state 0/1)
-  Wiring below assumes:
-    Block 1 LEDs -> pins 2,3,4,5
-    Block 2 LEDs -> pins 6,7,8,9
-    Block 3 LEDs -> pins 10,11,12,13
-  Adjust the pin map if your wiring differs.
+  - One controllable LED on pin 11 (change CONTROL_LED_PIN if needed)
+  - Link indicator LED on pin 13 (onboard) to show recent traffic
+  Works with HC-05/HC-06 UART modules. Expects payloads:
+    block-1-0-1   (block id 1, light index 0, state 0/1)
+  Heartbeats from the app ("ping") also keep the link LED on.
 */
 
-const byte BLOCK_COUNT = 3;
-const byte LIGHTS_PER_BLOCK = 4;
+const byte CONTROL_LED_PIN = 11;  // driven by app commands
+const byte LINK_LED_PIN     = 13; // onboard LED for link status
 
-const byte blockPins[BLOCK_COUNT][LIGHTS_PER_BLOCK] = {
-  {2, 3, 4, 5},       // block-1
-  {6, 7, 8, 9},       // block-2
-  {10, 11, 12, 13}    // block-3
-};
-
-// Simple input buffer for one line of text.
 String inputBuffer;
+unsigned long lastDataTime = 0;
+const unsigned long timeoutMs = 10000; // 10s without data => link off
 
 void setup() {
-  // Init LED pins.
-  for (byte b = 0; b < BLOCK_COUNT; b++) {
-    for (byte i = 0; i < LIGHTS_PER_BLOCK; i++) {
-      pinMode(blockPins[b][i], OUTPUT);
-      digitalWrite(blockPins[b][i], LOW);
-    }
-  }
+  pinMode(CONTROL_LED_PIN, OUTPUT);
+  pinMode(LINK_LED_PIN, OUTPUT);
+  digitalWrite(CONTROL_LED_PIN, LOW);
+  digitalWrite(LINK_LED_PIN, LOW);
 
-  // Bluetooth serial (HC-05/HC-06 defaults to 9600).
-  Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB only
-  }
-  Serial.println(F("Lumen Control ready"));
+  Serial.begin(9600); // HC-05 default baud
+  while (!Serial) { ; }
+  Serial.println(F("Single LED controller ready"));
 }
 
 void loop() {
-  // Read incoming characters until newline.
   while (Serial.available()) {
     char c = Serial.read();
     if (c == '\n' || c == '\r') {
@@ -47,19 +33,31 @@ void loop() {
         handleCommand(inputBuffer);
         inputBuffer = "";
       }
+      lastDataTime = millis();
     } else {
       inputBuffer += c;
-      // Avoid runaway buffer.
-      if (inputBuffer.length() > 64) {
-        inputBuffer = "";
-      }
+      if (inputBuffer.length() > 32) inputBuffer = "";
+      lastDataTime = millis();
     }
+  }
+
+  // Update link LED based on recent traffic (heartbeat or commands)
+  if (millis() - lastDataTime <= timeoutMs) {
+    digitalWrite(LINK_LED_PIN, HIGH);
+  } else {
+    digitalWrite(LINK_LED_PIN, LOW);
   }
 }
 
-void handleCommand(const String &cmd) {
-  // Expected: block-X-Y-Z  (X=1..3, Y=0..3, Z=0/1)
-  // Split by '-'
+void handleCommand(String cmd) {
+  cmd.trim(); // remove any stray whitespace/CR
+
+  if (cmd == "ping") {
+    Serial.println(F("pong"));
+    return;
+  }
+
+  // Expected: block-1-0-1 or block-1-0-0
   int firstDash = cmd.indexOf('-');
   int secondDash = cmd.indexOf('-', firstDash + 1);
   int thirdDash = cmd.indexOf('-', secondDash + 1);
@@ -73,23 +71,19 @@ void handleCommand(const String &cmd) {
   String idxPart = cmd.substring(secondDash + 1, thirdDash);
   String statePart = cmd.substring(thirdDash + 1);
 
-  int blockNum = blockPart.toInt();   // 1-based
-  int lightIdx = idxPart.toInt();     // 0-based
-  int stateVal = statePart.toInt();   // 0 or 1
-
-  if (blockNum < 1 || blockNum > BLOCK_COUNT ||
-      lightIdx < 0 || lightIdx >= LIGHTS_PER_BLOCK ||
-      (stateVal != 0 && stateVal != 1)) {
-    Serial.println(F("ERR range"));
+  if (blockPart != "1" || idxPart != "0") {
+    Serial.println(F("ERR addr"));
     return;
   }
 
-  byte pin = blockPins[blockNum - 1][lightIdx];
-  digitalWrite(pin, stateVal == 1 ? HIGH : LOW);
-  Serial.print(F("OK "));
-  Serial.print(blockNum);
-  Serial.print(F("-"));
-  Serial.print(lightIdx);
-  Serial.print(F("->"));
+  statePart.trim();
+  int stateVal = statePart.toInt(); // 0 or 1
+  if (stateVal != 0 && stateVal != 1) {
+    Serial.println(F("ERR state"));
+    return;
+  }
+
+  digitalWrite(CONTROL_LED_PIN, stateVal == 1 ? HIGH : LOW);
+  Serial.print(F("OK 1-0->"));
   Serial.println(stateVal);
 }

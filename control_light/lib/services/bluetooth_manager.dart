@@ -19,6 +19,7 @@ class BluetoothManager extends ChangeNotifier {
   BluetoothConnection? _connection;
   StreamSubscription<BluetoothDiscoveryResult>? _discoverySub;
   StreamSubscription<Uint8List>? _inputSub;
+  Timer? _keepAliveTimer;
 
   bool _simulate = true;
   bool _busy = false;
@@ -82,6 +83,7 @@ class BluetoothManager extends ChangeNotifier {
       _simulate = false;
       _connected = true;
       _statusText = 'Connected to ${device.name ?? address}';
+      _startKeepAlive();
 
       _inputSub?.cancel();
       _inputSub = _connection?.input?.listen(
@@ -92,6 +94,7 @@ class BluetoothManager extends ChangeNotifier {
           _statusText = 'Disconnected';
           _connected = false;
           _simulate = true;
+          _stopKeepAlive();
           notifyListeners();
         },
       );
@@ -190,6 +193,7 @@ class BluetoothManager extends ChangeNotifier {
     _simulate = true;
     _connected = false;
     _statusText = 'Disconnected';
+    _stopKeepAlive();
     await _inputSub?.cancel();
     await _discoverySub?.cancel();
     if (_connection != null) {
@@ -219,6 +223,25 @@ class BluetoothManager extends ChangeNotifier {
       _connection = null;
     }
     notifyListeners();
+  }
+
+  void _startKeepAlive() {
+    _keepAliveTimer?.cancel();
+    // Send a lightweight heartbeat every 2 seconds to satisfy HC-05 activity checks.
+    _keepAliveTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (_connection?.isConnected ?? false) {
+        try {
+          _connection!.output.add(Uint8List.fromList(utf8.encode('ping\r\n')));
+        } catch (_) {
+          // Ignore heartbeat send errors; main sendLightCommand handles state.
+        }
+      }
+    });
+  }
+
+  void _stopKeepAlive() {
+    _keepAliveTimer?.cancel();
+    _keepAliveTimer = null;
   }
 
   String _normalizeAddress(String input) {

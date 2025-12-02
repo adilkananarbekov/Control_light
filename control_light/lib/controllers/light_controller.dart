@@ -6,24 +6,13 @@ import '../services/bluetooth_manager.dart';
 
 class LightController extends ChangeNotifier {
   LightController(this.bluetooth) {
+    // Single block with one LED mapped to Arduino pin 11
     _blocks = [
       LightBlock(
         id: 'block-1',
-        name: 'Block A',
+        name: 'Single LED',
         accent: AppColors.accentCyan,
-        lights: List<bool>.filled(4, false),
-      ),
-      LightBlock(
-        id: 'block-2',
-        name: 'Block B',
-        accent: AppColors.accentPurple,
-        lights: List<bool>.filled(4, false),
-      ),
-      LightBlock(
-        id: 'block-3',
-        name: 'Block C',
-        accent: AppColors.accentGreen,
-        lights: List<bool>.filled(4, false),
+        lights: List<bool>.filled(1, false),
       ),
     ];
   }
@@ -35,7 +24,7 @@ class LightController extends ChangeNotifier {
 
   void toggle(String blockId, int index, bool value) {
     final blockIndex = _blocks.indexWhere((b) => b.id == blockId);
-    if (blockIndex == -1 || index < 0 || index > 3) return;
+    if (blockIndex == -1 || index < 0 || index >= _blocks[blockIndex].lights.length) return;
     final block = _blocks[blockIndex];
     final lights = List<bool>.from(block.lights);
     lights[index] = value;
@@ -48,8 +37,8 @@ class LightController extends ChangeNotifier {
     final blockIndex = _blocks.indexWhere((b) => b.id == blockId);
     if (blockIndex == -1) return;
     final block = _blocks[blockIndex];
-    _blocks[blockIndex] = block.copyWith(lights: List<bool>.filled(4, value));
-    for (int i = 0; i < 4; i++) {
+    _blocks[blockIndex] = block.copyWith(lights: List<bool>.filled(block.lights.length, value));
+    for (int i = 0; i < block.lights.length; i++) {
       bluetooth.sendLightCommand(blockId, i, value);
     }
     notifyListeners();
