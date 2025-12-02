@@ -8,3 +8,4 @@ void main() {
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const ControlLightApp());
 }
+// fuck it all
