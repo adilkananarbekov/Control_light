@@ -19,13 +19,13 @@ class ControlPanelPage extends StatelessWidget {
     final lights = context.watch<LightController>();
     final auth = context.watch<AuthController>();
     final bluetooth = context.watch<BluetoothManager>();
-    final totalOn = lights.blocks.fold<int>(
-      0,
-      (sum, block) => sum + block.lights.where((l) => l).length,
-    );
     final totalLights = lights.blocks.fold<int>(
       0,
       (sum, block) => sum + block.lights.length,
+    );
+    final totalOn = lights.blocks.fold<int>(
+      0,
+      (sum, block) => sum + block.lights.where((l) => l).length,
     );
 
     return Container(
@@ -45,8 +45,8 @@ class ControlPanelPage extends StatelessWidget {
           _ConnectionCard(bluetooth: bluetooth),
           const SizedBox(height: 12),
           _SummaryCard(
-            totalOn: totalOn,
             totalLights: totalLights,
+            totalOn: totalOn,
             bluetooth: bluetooth,
           ),
           const SizedBox(height: 8),
@@ -215,19 +215,19 @@ class _ConnectionCardState extends State<_ConnectionCard> {
 
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
-    required this.totalOn,
     required this.totalLights,
+    required this.totalOn,
     required this.bluetooth,
   });
 
-  final int totalOn;
   final int totalLights;
+  final int totalOn;
   final BluetoothManager bluetooth;
 
   @override
   Widget build(BuildContext context) {
     final palette = AppColors.of(Theme.of(context).brightness);
-    final ratio = totalOn / totalLights;
+    final ratio = totalLights == 0 ? 0.0 : totalOn / totalLights.toDouble();
     return GlassCard(
       child: Row(
         children: [
@@ -269,16 +269,16 @@ class _SummaryCard extends StatelessWidget {
               children: [
                 Text(
                   'Lighting overview',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(color: palette.textPrimary),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: palette.textPrimary),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$totalOn of $totalLights lights are active',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: palette.textSecondary),
+                  '$totalOn of $totalLights lights are ON',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: palette.textSecondary),
                 ),
                 const SizedBox(height: 6),
               Row(
@@ -410,8 +410,7 @@ class BlockCard extends StatelessWidget {
                   Text(
                     allowed ? 'Allowed' : 'Locked',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color:
-                              allowed ? palette.textPrimary : palette.textSecondary,
+                          color: allowed ? palette.textPrimary : palette.textSecondary,
                         ),
                   ),
                   Switch(
@@ -500,7 +499,7 @@ class _LightPill extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              'Light ${index + 1}',
+              'LED ${index + 1}',
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     color: palette.textPrimary,
                     fontWeight: FontWeight.w700,

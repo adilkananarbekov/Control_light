@@ -6,13 +6,24 @@ import '../services/bluetooth_manager.dart';
 
 class LightController extends ChangeNotifier {
   LightController(this.bluetooth) {
-    // Single block with one LED mapped to Arduino pin 11
     _blocks = [
       LightBlock(
         id: 'block-1',
-        name: 'Single LED',
+        name: 'Block A',
         accent: AppColors.accentCyan,
-        lights: List<bool>.filled(1, false),
+        lights: List<bool>.filled(4, false),
+      ),
+      LightBlock(
+        id: 'block-2',
+        name: 'Block B',
+        accent: AppColors.accentPurple,
+        lights: List<bool>.filled(4, false),
+      ),
+      LightBlock(
+        id: 'block-3',
+        name: 'Block C',
+        accent: AppColors.accentGreen,
+        lights: List<bool>.filled(4, false),
       ),
     ];
   }
